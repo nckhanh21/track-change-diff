@@ -1,87 +1,146 @@
 <!DOCTYPE html>
 <html>
+
 <head>
 	<meta charset="utf-8">
 	<title>Diff</title>
-	<link rel="stylesheet" href="style.css"/>
+	<link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
+	<div id="settings">
+		<h1>
+			Track the difference between two files by
+		</h1>
+		<label><input type="radio" name="diff_type" value="diffChars" checked> Chars</label>
+		<label><input type="radio" name="diff_type" value="diffWords"> Words</label>
+		<label><input type="radio" name="diff_type" value="diffLines"> Lines</label>
+	</div>
+	<input type="file" value="" id="file1" onchange="handleFileSelect(event, 'a')">
+	<input type="file" value="" id="file2" onchange="handleFileSelect(event, 'b')">
+	<input type="submit" value="Track" onclick="changed()">
+	<table>
+		<tr>
+			<td style="background-color: white; border-radius: 1%;" title="File 1's content" id="a"></td>
+			<td style="background-color: white; border-radius: 1%;" id="b" title="File 2's content"></td>
+			<!-- <td>
+				<pre id="result"></pre>
+			</td> -->
+			<td>
+				<pre id="resa"></pre>
+			</td>
+			<td>
+				<pre id="resb"></pre>
+			</td>
+		</tr>
+	</table>
 
-<div id="settings">
-	<h1>Diff</h1>
-	<label><input type="radio" name="diff_type" value="diffChars" checked> Chars</label>
-	<label><input type="radio" name="diff_type" value="diffWords"> Words</label>
-	<label><input type="radio" name="diff_type" value="diffLines"> Lines</label>
-</div>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+	<script src="diff.js"></script>
+	<script defer>
+		var a = document.getElementById('a');
+		var b = document.getElementById('b');
+		// var result = document.getElementById('result');
+		var resa = document.getElementById('resa');
+		var resb = document.getElementById('resb');
 
-<table>
-	<tr>
-		<td contenteditable="true" id="a">Nguyễn Công Khánh</td>
-		<td contenteditable="true" id="b">NguyễN Công Khanhs</td>
-		<td><pre id="result"></pre></td>
-	</tr>
-</table>
+		function handleFileSelect(event, elementId) {
+			const file = event.target.files[0];
+			const reader = new FileReader();
 
-<script src="diff.js"></script>
-<script defer>
-var a = document.getElementById('a');
-var b = document.getElementById('b');
-var result = document.getElementById('result');
+			reader.onload = function (e) {
+				const arrayBuffer = e.target.result;
+				var fileContents = new Uint8Array(arrayBuffer);
 
-function changed() {
-	var diff = JsDiff[window.diffType](a.textContent, b.textContent);
-	var fragment = document.createDocumentFragment();
-	for (var i=0; i < diff.length; i++) {
+				// Convert docx to plain text using Mammoth.js
+				mammoth.extractRawText({ arrayBuffer: fileContents })
+					.then(function (resultObject) {
+						const contents = resultObject.value;
+						console.log(contents);
+						// Display file content
+						document.getElementById(elementId).textContent = contents;
+					})
+					.done();
+			};
 
-		if (diff[i].added && diff[i + 1] && diff[i + 1].removed) {
-			var swap = diff[i];
-			diff[i] = diff[i + 1];
-			diff[i + 1] = swap;
+			reader.readAsArrayBuffer(file);
 		}
 
-		var node;
-		if (diff[i].removed) {
-			node = document.createElement('del');
-			node.appendChild(document.createTextNode(diff[i].value));
-		} else if (diff[i].added) {
-			node = document.createElement('ins');
-			node.appendChild(document.createTextNode(diff[i].value));
+		function changed() {
+			var diff = JsDiff[window.diffType](a.textContent, b.textContent);
+			var fragment = document.createDocumentFragment();
+			var fragmentA = document.createDocumentFragment();
+			var fragmentB = document.createDocumentFragment();
+			for (var i = 0; i < diff.length; i++) {
+				if (diff[i].added && diff[i + 1] && diff[i + 1].removed) {
+					var swap = diff[i];
+					diff[i] = diff[i + 1];
+					diff[i + 1] = swap;
+				}
+
+				var node;
+				var nodeA;
+				var nodeB;
+				if (diff[i].removed) {
+					node = document.createElement('del');
+					node.appendChild(document.createTextNode(diff[i].value));
+					nodeA = document.createElement('del');
+					nodeA.appendChild(document.createTextNode(diff[i].value));
+				} else if (diff[i].added) {
+					node = document.createElement('ins');
+					node.appendChild(document.createTextNode(diff[i].value));
+					nodeB = document.createElement('ins');
+					nodeB.appendChild(document.createTextNode(diff[i].value));
+				} else {
+					node = document.createTextNode(diff[i].value);
+					nodeA = document.createTextNode(diff[i].value);
+					nodeB = document.createTextNode(diff[i].value);
+				}
+				fragment.appendChild(node);
+
+				if (nodeA != null) {
+					fragmentA.appendChild(nodeA);
+				}
+				if (nodeB != null) {
+					fragmentB.appendChild(nodeB);
+				}
+			}
+
+			// result.textContent = '';
+			// result.appendChild(fragment);
+			resa.textContent = '';
+			resa.appendChild(fragmentA);
+			resb.textContent = '';
+			resb.appendChild(fragmentB);
+		}
+
+		window.onload = function () {
+			onDiffTypeChange(document.querySelector('#settings [name="diff_type"]:checked'));
+			changed();
+		};
+
+		a.onpaste = a.onchange =
+			b.onpaste = b.onchange = changed;
+
+		if ('oninput' in a) {
+			a.oninput = b.oninput = changed;
 		} else {
-			node = document.createTextNode(diff[i].value);
+			a.onkeyup = b.onkeyup = changed;
 		}
-		fragment.appendChild(node);
-	}
 
-	result.textContent = '';
-	result.appendChild(fragment);
-}
+		function onDiffTypeChange(radio) {
+			window.diffType = radio.value;
+			document.title = "Diff " + radio.value.slice(4);
+		}
 
-window.onload = function() {
-	onDiffTypeChange(document.querySelector('#settings [name="diff_type"]:checked'));
-	changed();
-};
-
-a.onpaste = a.onchange =
-b.onpaste = b.onchange = changed;
-
-if ('oninput' in a) {
-	a.oninput = b.oninput = changed;
-} else {
-	a.onkeyup = b.onkeyup = changed;
-}
-
-function onDiffTypeChange(radio) {
-	window.diffType = radio.value;
-	document.title = "Diff " + radio.value.slice(4);
-}
-
-var radio = document.getElementsByName('diff_type');
-for (var i = 0; i < radio.length; i++) {
-	radio[i].onchange = function(e) {
-		onDiffTypeChange(e.target);
-		changed();
-	}
-}
-</script>
+		var radio = document.getElementsByName('diff_type');
+		for (var i = 0; i < radio.length; i++) {
+			radio[i].onchange = function (e) {
+				onDiffTypeChange(e.target);
+				changed();
+			};
+		}
+	</script>
 </body>
+
 </html>
