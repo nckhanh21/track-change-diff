@@ -21,13 +21,13 @@
 	<input type="submit" value="Track" onclick="changed()">
 	<table>
 		<tr>
-			<td style="background-color: white; border-radius: 1%;" title="File 1's content" id="a"></td>
+			<td style="background-color: white; border-radius: 1%;" id="a" title="File 1's content"></td>
 			<td style="background-color: white; border-radius: 1%;" id="b" title="File 2's content"></td>
 			<!-- <td>
 				<pre id="result"></pre>
 			</td> -->
 			<td>
-				<pre id="resa"></pre>
+				
 			</td>
 			<td>
 				<pre id="resb"></pre>
@@ -108,10 +108,10 @@
 
 			// result.textContent = '';
 			// result.appendChild(fragment);
-			resa.textContent = '';
-			resa.appendChild(fragmentA);
-			resb.textContent = '';
-			resb.appendChild(fragmentB);
+			a.textContent = '';
+			a.appendChild(fragmentA);
+			b.textContent = '';
+			b.appendChild(fragmentB);
 		}
 
 		window.onload = function () {
